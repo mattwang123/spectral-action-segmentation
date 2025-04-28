@@ -26,7 +26,7 @@ Automatically segmenting different stages of actions in videos, such as surgical
 
 ---
 
-## ** 2. Frame Representation (not mentioned before)
+## 2. Frame Representation (not mentioned before)
 
 Each frame is transformed into a 3D (or 4D) point cloud:
 - **x**: Normalized horizontal pixel position.
