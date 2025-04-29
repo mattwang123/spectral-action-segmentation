@@ -148,7 +148,7 @@ if __name__ == "__main__":
     print(f"Converted {len(point_clouds)} frames into point clouds.")
 
     n_clusters = 3
-    method = "wasserstein"   # Options: 'spectral' or 'wasserstein'
+    method = "wasserstein"
 
     if method == "spectral":
         labels = cluster_frames_spectral(point_clouds, n_clusters=n_clusters)
@@ -159,4 +159,4 @@ if __name__ == "__main__":
 
     plot_cluster_assignments(labels, method=method.capitalize())
     show_clustered_images(frames, labels, n_clusters=n_clusters, samples_per_cluster=6, method=method.capitalize())
-    print(f"{method.capitalize()} Clustering + Visualization complete.")
+    print(f"{method.capitalize()} Clustering + pointcloud + Visualization complete.")
