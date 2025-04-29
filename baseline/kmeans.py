@@ -49,7 +49,7 @@ def show_clustered_images(frames, labels, n_clusters=3, samples_per_cluster=6):
     plt.show()
 
 if __name__ == "__main__":
-    folder = 'preprocessed_frames\denis_jump' 
+    folder = os.path.join("preprocessed_frames", "denis_jump")
     frames = load_saved_frames(folder_path=folder, resize_dim=(64, 64))
 
     n_clusters = 3
