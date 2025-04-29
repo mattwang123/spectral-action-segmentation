@@ -1,8 +1,13 @@
 # spectral-action-segmentation
 This is the final project for 110.445 MCFDS.
 
-To activate environment:
+### To activate environment:
 
 conda create -n mfds
 conda activate mfds
 pip install -r requirements.txt
+
+### example usage:
+change video path
+python preprocess_data.py
+python baseline\kmeans.py
