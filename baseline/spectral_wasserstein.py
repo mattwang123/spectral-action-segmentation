@@ -3,7 +3,6 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 from sklearn.cluster import SpectralClustering, AgglomerativeClustering
-import ot
 
 def load_saved_frames(folder_path, resize_dim=(64, 64)):
     """Load saved grayscale PNG frames and normalize to [0, 1]."""
@@ -18,6 +17,30 @@ def load_saved_frames(folder_path, resize_dim=(64, 64)):
 
     print(f"Loaded {len(frames)} frames from '{folder_path}'")
     return frames
+
+def compute_frame_differences(frames):
+    """Compute absolute frame-to-frame differences."""
+    diffs = [np.abs(frames[i] - frames[i - 1]) for i in range(1, len(frames))]
+    print(f"Computed {len(diffs)} frame differences.")
+    return diffs
+
+def cluster_frame_diffs_wasserstein(diff_frames, n_clusters=3):
+    """Cluster frame differences using pairwise Wasserstein distances."""
+    n = len(diff_frames)
+    D = np.zeros((n, n))
+    print("Computing Wasserstein distance matrix (frame diffs)...")
+
+    for i in range(n):
+        for j in range(i + 1, n):
+            d = compute_sliced_wasserstein_distance(diff_frames[i], diff_frames[j])
+            D[i, j] = D[j, i] = d
+
+    clustering = AgglomerativeClustering(
+        n_clusters=n_clusters,
+        metric='precomputed',
+        linkage='average'
+    )
+    return clustering.fit_predict(D)
 
 def cluster_frames_spectral(frames, n_clusters=3):
     """Cluster frames using Spectral Clustering."""
@@ -102,10 +125,16 @@ def show_clustered_images(frames, labels, n_clusters=3, samples_per_cluster=6, m
 if __name__ == "__main__":
     folder = os.path.join("preprocessed_frames", "denis_jump")
     frames = load_saved_frames(folder_path=folder, resize_dim=(64, 64))
+    diff_frames = compute_frame_differences(frames)
 
+    # Step 2: Cluster on those differences
     n_clusters = 3
-    labels = cluster_frames_wasserstein(frames, n_clusters=n_clusters)
+    labels = cluster_frame_diffs_wasserstein(diff_frames, n_clusters=n_clusters)
 
-    plot_cluster_assignments(labels, method="Wasserstein")
-    show_clustered_images(frames, labels, n_clusters=n_clusters, samples_per_cluster=6, method="Wasserstein")
-    print("Wasserstein Clustering + Visualization complete.")
+    # Step 3: Plot results (shifted by +1 to match frame index)
+    plot_cluster_assignments(labels, method="Wasserstein (Diffs)")
+
+    # Step 4: Show clustered original frames
+    show_clustered_images(frames[1:], labels, n_clusters=n_clusters, samples_per_cluster=6, method="Wasserstein (Diffs)")
+
+    print("✅ Motion-aware Wasserstein clustering complete.")

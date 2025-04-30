@@ -18,6 +18,15 @@ def load_saved_frames(folder_path, resize_dim=(64, 64)):
     print(f"Loaded {len(frames)} frames from '{folder_path}'")
     return frames
 
+def compute_frame_differences(frames):
+    """Compute absolute frame-to-frame differences."""
+    diffs = []
+    for i in range(1, len(frames)):
+        diff = np.abs(frames[i] - frames[i - 1])
+        diffs.append(diff)
+    print(f"Computed {len(diffs)} frame differences.")
+    return diffs
+
 def cluster_frames_kmeans(frames, n_clusters=3):
     X = np.array([f.flatten() for f in frames])
     kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
@@ -26,35 +35,38 @@ def cluster_frames_kmeans(frames, n_clusters=3):
 def plot_cluster_assignments(labels):
     """Plot the cluster assignments over time."""
     plt.figure(figsize=(10, 3))
-    plt.plot(labels, marker='o')
+    plt.plot(range(1, len(labels)+1), labels, marker='o')  # Start from frame 1
     plt.xlabel("Frame Index")
     plt.ylabel("Cluster Label")
-    plt.title("K-Means Clustering Over Time")
+    plt.title("K-Means Clustering Over Time (Frame Differences)")
     plt.grid(True)
     plt.tight_layout()
     plt.show()
-
+    
 def show_clustered_images(frames, labels, n_clusters=3, samples_per_cluster=6):
-    """Display a grid of clustered images."""
+    """Display original images from each cluster (using difference-based clustering)."""
     plt.figure(figsize=(samples_per_cluster * 2, n_clusters * 2.5))
     for c in range(n_clusters):
         indices = np.where(labels == c)[0][:samples_per_cluster]
         for j, idx in enumerate(indices):
+            # +1 because diffs start from frame[1] - frame[0]
+            img_idx = idx + 1
             plt.subplot(n_clusters, samples_per_cluster, c * samples_per_cluster + j + 1)
-            plt.imshow(frames[idx], cmap='gray')
+            plt.imshow(frames[img_idx], cmap='gray')
             plt.axis('off')
             plt.title(f"C{c}", fontsize=8)
     plt.tight_layout()
-    plt.suptitle("Clustered Frame Samples", fontsize=14)
+    plt.suptitle("Clustered Frame Samples (Motion-Based)", fontsize=14)
     plt.show()
 
 if __name__ == "__main__":
     folder = os.path.join("preprocessed_frames", "denis_jump")
     frames = load_saved_frames(folder_path=folder, resize_dim=(64, 64))
 
-    n_clusters = 3
+    diff_frames = compute_frame_differences(frames)
 
-    labels = cluster_frames_kmeans(frames, n_clusters=n_clusters)
+    n_clusters = 2
+    labels = cluster_frames_kmeans(diff_frames, n_clusters=n_clusters)
     plot_cluster_assignments(labels)
     show_clustered_images(frames, labels, n_clusters=n_clusters, samples_per_cluster=6)
-    print("Clustering + Visualization complete.")
+    print("✅ Motion-based clustering complete.")
