@@ -31,7 +31,7 @@ def cluster_frames_spectral(frames, n_clusters=3):
     labels = spectral.fit_predict(X)
     return labels
 
-def plot_cluster_assignments(labels):
+def plot_cluster_assignments(labels, save_path=None):
     """Plot the cluster assignments over time."""
     plt.figure(figsize=(10, 3))
     plt.plot(labels, marker='o')
@@ -40,9 +40,11 @@ def plot_cluster_assignments(labels):
     plt.title("Spectral Clustering Over Time")
     plt.grid(True)
     plt.tight_layout()
+    if save_path:
+        plt.savefig(save_path)
     plt.show()
 
-def show_clustered_images(frames, labels, n_clusters=3, samples_per_cluster=6):
+def show_clustered_images(frames, labels, n_clusters=3, samples_per_cluster=6, save_path=None):
     """Display a grid of clustered images."""
     plt.figure(figsize=(samples_per_cluster * 2, n_clusters * 2.5))
     for c in range(n_clusters):
@@ -54,15 +56,24 @@ def show_clustered_images(frames, labels, n_clusters=3, samples_per_cluster=6):
             plt.title(f"C{c}", fontsize=8)
     plt.tight_layout()
     plt.suptitle("Clustered Frame Samples (Spectral Clustering)", fontsize=14)
+    if save_path:
+        plt.savefig(save_path)
     plt.show()
 
 if __name__ == "__main__":
-    folder = os.path.join("preprocessed_frames", "denis_jump")
-    frames = load_saved_frames(folder_path=folder, resize_dim=(64, 64))
+    # Input folder of preprocessed frames
+    action_name = "shahar_pjump"
+    folder_path = os.path.join("..", "preprocessed_frames", action_name)
+    frames = load_saved_frames(folder_path=folder_path, resize_dim=(64, 64))
+
+    # Output folder for saving results
+    output_base = "../cluster_output"
+    output_folder = os.path.join(output_base, "spectral_cluster_output", action_name)
+    os.makedirs(output_folder, exist_ok=True)
 
     n_clusters = 3
 
     labels = cluster_frames_spectral(frames, n_clusters=n_clusters)
-    plot_cluster_assignments(labels)
-    show_clustered_images(frames, labels, n_clusters=n_clusters, samples_per_cluster=6)
+    plot_cluster_assignments(labels, save_path=os.path.join(output_folder, "cluster_assignments.png"))
+    show_clustered_images(frames, labels, n_clusters=n_clusters, samples_per_cluster=6, save_path=os.path.join(output_folder, "clustered_images.png"))
     print("Spectral Clustering + Visualization complete.")
