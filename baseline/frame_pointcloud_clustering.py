@@ -2,8 +2,7 @@ import os
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-from sklearn.cluster import SpectralClustering, AgglomerativeClustering
-import ot
+from sklearn.cluster import AgglomerativeClustering
 
 # -------------------------------
 # Load frames
@@ -23,6 +22,25 @@ def load_saved_frames(folder_path, resize_dim=(64, 64)):
     return frames
 
 # -------------------------------
+# Frame Difference Selection
+# -------------------------------
+def compute_frame_differences(frames):
+    """Compute absolute frame-to-frame differences."""
+    diffs = []
+    for i in range(1, len(frames)):
+        diff = np.abs(frames[i] - frames[i - 1])
+        diffs.append(diff)
+    print(f"Computed {len(diffs)} frame differences.")
+    return diffs
+
+def select_motion_keyframes(frames, top_k=40):
+    """Select indices of frames with highest motion."""
+    diffs = compute_frame_differences(frames)
+    motion_strength = [np.sum(d) for d in diffs]
+    ranked_indices = np.argsort(motion_strength)[-top_k:]  # top_k motion-heavy
+    return sorted(ranked_indices)  # return in chronological order
+
+# -------------------------------
 # Frame to Point Cloud
 # -------------------------------
 def frame_to_point_cloud(frame, add_gradient=False):
@@ -32,87 +50,53 @@ def frame_to_point_cloud(frame, add_gradient=False):
     """
     H, W = frame.shape
     x_coords, y_coords = np.meshgrid(np.arange(W), np.arange(H))
-    
+
     x_norm = x_coords / (W - 1)
     y_norm = y_coords / (H - 1)
-    intensity = frame  # already normalized [0,1]
+    intensity = frame
 
     if add_gradient:
         gx = cv2.Sobel(frame, cv2.CV_32F, 1, 0, ksize=3)
         gy = cv2.Sobel(frame, cv2.CV_32F, 0, 1, ksize=3)
         grad_mag = np.sqrt(gx**2 + gy**2)
-        grad_mag /= grad_mag.max() + 1e-8  # Avoid divide by 0
+        grad_mag /= grad_mag.max() + 1e-8
         point_cloud = np.stack([x_norm.flatten(), y_norm.flatten(), intensity.flatten(), grad_mag.flatten()], axis=1)
     else:
         point_cloud = np.stack([x_norm.flatten(), y_norm.flatten(), intensity.flatten()], axis=1)
 
-    return point_cloud  # shape (H*W, 3) or (H*W, 4)
+    return point_cloud
 
 # -------------------------------
-# Spectral Clustering
-# -------------------------------
-def cluster_frames_spectral(point_clouds, n_clusters=3):
-    """Cluster frames using Spectral Clustering."""
-    # Flatten each point cloud to a single vector
-    X = np.array([pc.flatten() for pc in point_clouds])
-    spectral = SpectralClustering(
-        n_clusters=n_clusters,
-        affinity='nearest_neighbors',
-        assign_labels='kmeans',
-        random_state=42,
-        n_neighbors=10
-    )
-    return spectral.fit_predict(X)
-
-# -------------------------------
-# Sliced Wasserstein Distance between Point Clouds
+# Sliced Wasserstein Distance
 # -------------------------------
 def compute_sliced_wasserstein_distance(pc1, pc2, n_projections=50):
-    """Approximate Wasserstein distance between two point clouds."""
     d = pc1.shape[1]
     distances = []
-
     for _ in range(n_projections):
         proj = np.random.randn(d)
         proj /= np.linalg.norm(proj)
-
         proj1 = np.dot(pc1, proj)
         proj2 = np.dot(pc2, proj)
-
         proj1.sort()
         proj2.sort()
-
-        # Compute 1D Wasserstein distance (L1 distance between sorted projections)
-        distance = np.mean(np.abs(proj1 - proj2))
-        distances.append(distance)
-
+        distances.append(np.mean(np.abs(proj1 - proj2)))
     return np.mean(distances)
 
 def cluster_frames_wasserstein(point_clouds, n_clusters=3):
-    """Cluster frames based on Wasserstein distances between point clouds."""
     n_frames = len(point_clouds)
     D = np.zeros((n_frames, n_frames))
-
     print("Computing pairwise Sliced Wasserstein distances between point clouds...")
     for i in range(n_frames):
         for j in range(i + 1, n_frames):
             d = compute_sliced_wasserstein_distance(point_clouds[i], point_clouds[j])
-            D[i, j] = d
-            D[j, i] = d
-
-    clustering = AgglomerativeClustering(
-        n_clusters=n_clusters,
-        metric='precomputed',  # <- Use metric not affinity
-        linkage='average'
-    )
-    labels = clustering.fit_predict(D)
-    return labels
+            D[i, j] = D[j, i] = d
+    clustering = AgglomerativeClustering(n_clusters=n_clusters, metric='precomputed', linkage='average')
+    return clustering.fit_predict(D)
 
 # -------------------------------
 # Visualization
 # -------------------------------
-def plot_cluster_assignments(labels, method="Spectral"):
-    """Plot the cluster assignments over time."""
+def plot_cluster_assignments(labels, method="Wasserstein"):
     plt.figure(figsize=(10, 3))
     plt.plot(labels, marker='o')
     plt.xlabel("Frame Index")
@@ -122,8 +106,7 @@ def plot_cluster_assignments(labels, method="Spectral"):
     plt.tight_layout()
     plt.show()
 
-def show_clustered_images(frames, labels, n_clusters=3, samples_per_cluster=6, method="Spectral"):
-    """Display a grid of clustered images."""
+def show_clustered_images(frames, labels, n_clusters=3, samples_per_cluster=6, method="Wasserstein"):
     plt.figure(figsize=(samples_per_cluster * 2, n_clusters * 2.5))
     for c in range(n_clusters):
         indices = np.where(labels == c)[0][:samples_per_cluster]
@@ -140,23 +123,22 @@ def show_clustered_images(frames, labels, n_clusters=3, samples_per_cluster=6, m
 # Main
 # -------------------------------
 if __name__ == "__main__":
-    folder = os.path.join("preprocessed_frames", "denis_jump")
+    folder = os.path.join("preprocessed_frames", "shahar_pjump")
     frames = load_saved_frames(folder_path=folder, resize_dim=(64, 64))
 
-    # Convert frames into structured point clouds
-    point_clouds = [frame_to_point_cloud(f, add_gradient=True) for f in frames]
-    print(f"Converted {len(point_clouds)} frames into point clouds.")
+    # --- Select motion-heavy frames ---
+    top_frame_indices = select_motion_keyframes(frames, top_k=40)
+    selected_frames = [frames[i + 1] for i in top_frame_indices]  # +1 aligns with diff indexing
 
+    # --- Convert selected frames to point clouds ---
+    point_clouds = [frame_to_point_cloud(f, add_gradient=True) for f in selected_frames]
+    print(f"Converted {len(point_clouds)} motion-based frames into point clouds.")
+
+    # --- Cluster ---
     n_clusters = 3
-    method = "wasserstein"
+    labels = cluster_frames_wasserstein(point_clouds, n_clusters=n_clusters)
 
-    if method == "spectral":
-        labels = cluster_frames_spectral(point_clouds, n_clusters=n_clusters)
-    elif method == "wasserstein":
-        labels = cluster_frames_wasserstein(point_clouds, n_clusters=n_clusters)
-    else:
-        raise ValueError("Unknown clustering method.")
-
-    plot_cluster_assignments(labels, method=method.capitalize())
-    show_clustered_images(frames, labels, n_clusters=n_clusters, samples_per_cluster=6, method=method.capitalize())
-    print(f"{method.capitalize()} Clustering + pointcloud + Visualization complete.")
+    # --- Visualize ---
+    plot_cluster_assignments(labels, method="Wasserstein")
+    show_clustered_images(selected_frames, labels, n_clusters=n_clusters, samples_per_cluster=6, method="Wasserstein")
+    print("Wasserstein Clustering on motion-based pointclouds complete.")
