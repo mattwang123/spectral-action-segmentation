@@ -1,0 +1,1 @@
+python run_clustering.py --folder preprocessed_frames/denis_jump --method spectral --distance wasserstein --clusters 3
