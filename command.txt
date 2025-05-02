@@ -1,1 +1,4 @@
-python run_clustering.py --folder preprocessed_frames/denis_jump --method spectral --distance wasserstein --clusters 3
+python run_clustering.py --folder preprocessed_frames/0003 --method spectral --distance wasserstein --clusters 3
+
+method: spectral / kmeans
+distance : wasserstein / euclidean
