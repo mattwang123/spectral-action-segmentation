@@ -82,6 +82,6 @@ if __name__ == "__main__":
         ax.imshow(frames[i], cmap='gray')
         ax.set_title(f"Frame {i}")
         ax.axis('off')
-    plt.suptitle("First 9 Preprocessed Frames", fontsize=14)
+    plt.suptitle("Preprocessed Frames", fontsize=14)
     plt.tight_layout()
     plt.show()

@@ -130,7 +130,7 @@ def plot_cluster_assignments(labels, method="Clustering"):
     plt.show()
 
 
-def show_clustered_images(frames, labels, n_clusters=3, samples_per_cluster=10, method="Clustering"):
+def show_clustered_images(frames, labels, n_clusters=3, samples_per_cluster=20, method="Clustering"):
     plt.figure(figsize=(samples_per_cluster * 2, n_clusters * 2.5))
     for c in range(n_clusters):
         indices = np.where(labels == c)[0][:samples_per_cluster]
