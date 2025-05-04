@@ -1,4 +1,7 @@
-python run_clustering.py --folder preprocessed_frames/0003 --method spectral --distance wasserstein --clusters 3
+python run_clustering.py --folder preprocessed_frames/0003 --method kmeans --distance wasserstein --clusters 5 --motion diff --stack 1
 
 method: spectral / kmeans
-distance : wasserstein / euclidean
+distance: wasserstein / euclidean
+cluster: number of clusters
+motion: diff / flow
+stack: number of frames to stack
