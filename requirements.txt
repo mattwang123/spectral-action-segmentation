@@ -1,7 +1,7 @@
-opencv-python
 numpy
-scipy
+opencv-python
 matplotlib
+seaborn
 scikit-learn
-scikit-image
-tqdm
+scipy
+POT

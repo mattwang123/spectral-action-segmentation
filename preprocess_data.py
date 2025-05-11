@@ -44,13 +44,6 @@ def save_frames(frames, output_dir):
     print(f"Saved {len(frames)} frames to {output_dir}")
 
 def preprocess_video(video_path, target_fps=10, resize_dim=(64, 64), save_dir=None):
-    """
-    Full preprocessing pipeline:
-    - Load video
-    - Extract and preprocess frames
-    - Optionally save frames
-    - Optionally visualize a sample point cloud
-    """
     cap, original_fps = load_video(video_path)
     frames = extract_frames(cap, original_fps, target_fps, resize_dim)
 

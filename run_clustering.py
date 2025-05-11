@@ -1,18 +1,13 @@
 import os
 import argparse
+from typing import Sequence, Tuple
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-from sklearn.cluster import KMeans, SpectralClustering, AgglomerativeClustering
-from sklearn.decomposition import PCA
 import seaborn as sns
 from mpl_toolkits.mplot3d import Axes3D
-import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans, SpectralClustering, AgglomerativeClustering
 from sklearn.decomposition import PCA
-import numpy as np
-from typing import List, Sequence, Optional, Tuple
-from collections import Counter
-from typing import Tuple, Sequence
 
 def load_saved_frames(folder_path, resize_dim=(64, 64)):
     """Load saved grayscale PNG frames and normalize to [0, 1]."""
@@ -155,7 +150,7 @@ def show_clustered_images(frames, labels, n_clusters=3, samples_per_cluster=20, 
 
 def save_multi_view_3d_plot(point_clouds, labels=None, out_path="3d_clusters_views_paper.png"):
     """
-    Save a multi-view 3D PCA plot with clean, publication-ready aesthetics.
+    3D PCA plot visualization
     """
     flattened = np.array([pc.flatten() for pc in point_clouds])
     reducer = PCA(n_components=3)

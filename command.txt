@@ -1,4 +1,4 @@
-python run_clustering.py --folder preprocessed_frames/0003 --method kmeans --distance wasserstein --clusters 5
+python run_clustering.py --folder preprocessed_frames/shahar_phump --method kmeans --distance wasserstein --clusters 3
 
 method: spectral / kmeans
 distance: wasserstein / euclidean
