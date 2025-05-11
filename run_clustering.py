@@ -4,6 +4,12 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans, SpectralClustering, AgglomerativeClustering
+from sklearn.decomposition import PCA
+import seaborn as sns
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+import numpy as np
 
 def load_saved_frames(folder_path, resize_dim=(64, 64)):
     """Load saved grayscale PNG frames and normalize to [0, 1]."""
@@ -144,6 +150,56 @@ def show_clustered_images(frames, labels, n_clusters=3, samples_per_cluster=20, 
     plt.show()
 
 
+def visualize_frame_embeddings_3d_unlabeled(point_clouds):
+    flattened = np.array([pc.flatten() for pc in point_clouds])
+    reducer = PCA(n_components=3)
+    embeddings = reducer.fit_transform(flattened)
+
+    fig = plt.figure(figsize=(10, 7))
+    ax = fig.add_subplot(111, projection='3d')
+
+    ax.scatter(embeddings[:, 0], embeddings[:, 1], embeddings[:, 2], 
+               color='gray', s=60, alpha=0.6)
+
+    ax.set_title(f"3D Frame Embedding via PCA (Unlabeled)")
+    ax.set_xlabel("Component 1")
+    ax.set_ylabel("Component 2")
+    ax.set_zlabel("Component 3")
+
+    plt.tight_layout()
+    plt.show()
+
+def visualize_frame_embeddings_3d(point_clouds, labels=None):
+    """
+    Reduce high-dimensional point clouds to 3D and visualize with cluster labels.
+    """
+    print("🔍 Reducing dimensionality to 3D for visualization...")
+    flattened = np.array([pc.flatten() for pc in point_clouds])
+    
+    reducer = PCA(n_components=2)
+    embeddings = reducer.fit_transform(flattened)
+
+    fig = plt.figure(figsize=(10, 7))
+    ax = fig.add_subplot(111, projection='3d')
+
+    scatter = ax.scatter(
+        embeddings[:, 0], embeddings[:, 1], embeddings[:, 2],
+        c=labels, cmap='tab10', s=60, alpha=0.8
+    )
+
+    ax.set_title(f"3D Frame Clusters via PCA")
+    ax.set_xlabel("Component 1")
+    ax.set_ylabel("Component 2")
+    ax.set_zlabel("Component 3")
+
+    legend = ax.legend(*scatter.legend_elements(), title="Cluster")
+    ax.add_artist(legend)
+
+    plt.tight_layout()
+    plt.show()
+
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Cluster video frames as point clouds using various methods.")
     parser.add_argument('--folder', type=str, default="preprocessed_frames/denis_jump", help="Input frame folder.")
@@ -157,10 +213,11 @@ if __name__ == "__main__":
     frames = load_saved_frames(folder_path=args.folder)
     diffs = compute_frame_differences(frames)
     pcs = [frame_to_point_cloud(f, diff=d) for f, d in zip(frames, diffs)]
-
     labels = cluster_point_clouds(pcs, distance=args.distance, method=args.method, n_clusters=args.clusters)
+    visualize_frame_embeddings_3d(pcs, labels)
+    
 
-    title = f"{args.method.capitalize()}-{args.distance.capitalize()}"
-    plot_cluster_assignments(labels, method=title)
-    show_clustered_images(frames, labels, n_clusters=args.clusters, method=title)
-    print(f"✅ {title} clustering complete.")
+    # title = f"{args.method.capitalize()}-{args.distance.capitalize()}"
+    # plot_cluster_assignments(labels, method=title)
+    # show_clustered_images(frames, labels, n_clusters=args.clusters, method=title)
+    # print(f"✅ {title} clustering complete.")
