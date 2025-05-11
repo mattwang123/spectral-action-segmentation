@@ -10,6 +10,9 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 import numpy as np
+from typing import List, Sequence, Optional, Tuple
+from collections import Counter
+from typing import Tuple, Sequence
 
 def load_saved_frames(folder_path, resize_dim=(64, 64)):
     """Load saved grayscale PNG frames and normalize to [0, 1]."""
@@ -182,6 +185,19 @@ def save_multi_view_3d_plot(point_clouds, labels=None, out_path="3d_clusters_vie
     print(f"✅ Saved academic-style multi-view 3D PCA plot to: {out_path}")
 
 
+# ── Markov‑chain forecaster ───────────────────────────────────────────────────
+class MarkovStageModel:
+    """Learn P(stage_t+1 | stage_t) from a label sequence and predict next stage."""
+    def __init__(self, n_clusters: int, smoothing: float=1e-6):
+        self.K = n_clusters
+        self.smoothing = smoothing
+        self.P = np.full((self.K, self.K), smoothing)   # transition matrix
+
+    def fit(self, labels: Sequence[int]) -> "MarkovStageModel":
+        for a, b in zip(labels[:-1], labels[1:]):
+            self.P[a, b] += 1
+        self.P /= self.P.sum(axis=1, keepdims=True)     # row‑stochastic
+        return self
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Cluster video frames as point clouds using various methods.")
@@ -191,6 +207,7 @@ if __name__ == "__main__":
                         help="Distance metric to use.")
     parser.add_argument('--method', type=str, choices=["spectral", "kmeans"], default="kmeans",
                         help="Clustering method to use.")
+    parser.add_argument('--window', type=int, default=1, help="Use the most-recent labels for forecasting")
     args = parser.parse_args()
 
     frames = load_saved_frames(folder_path=args.folder)
@@ -198,7 +215,20 @@ if __name__ == "__main__":
     pcs = [frame_to_point_cloud(f, diff=d) for f, d in zip(frames, diffs)]
     save_multi_view_3d_plot(pcs)
     labels = cluster_point_clouds(pcs, distance=args.distance, method=args.method, n_clusters=args.clusters)
-    
+
+    print("This is the clustering labels: ", labels)
+    mask = np.concatenate(([True], np.diff(labels) != 0))
+    unique_consecutive_labels = labels[mask]
+    print("This is the unique consecutive labels: ", unique_consecutive_labels)
+
+    # Learn Markov model
+    mc = MarkovStageModel(args.clusters).fit(unique_consecutive_labels)
+    print(f"Learned transition matrix: \n {mc.P}")
+    # Forecast next stage
+    recent = unique_consecutive_labels[-1] # We use the very last label
+    pred = np.argmax(mc.P[recent])
+    conf = mc.P[recent][pred]
+    print(f"Last stage {recent} -> Predicted stage {pred} with score {conf:.2f}")
     
 
     # title = f"{args.method.capitalize()}-{args.distance.capitalize()}"
