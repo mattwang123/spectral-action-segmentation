@@ -10,8 +10,7 @@ from sklearn.cluster import KMeans, SpectralClustering, AgglomerativeClustering
 from sklearn.decomposition import PCA
 
 def load_saved_frames(folder_path, resize_dim=(64, 64)):
-    """Load saved grayscale PNG frames and normalize to [0, 1]."""
-    valid_exts = (".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff")
+    valid_exts = (".png", ".jpg", ".jpeg")
     frame_files = sorted([f for f in os.listdir(folder_path) if f.lower().endswith(valid_exts)])
 
     frames = []
@@ -27,29 +26,11 @@ def load_saved_frames(folder_path, resize_dim=(64, 64)):
 
 
 def compute_frame_differences(frames):
-    """Compute absolute differences between consecutive frames."""
     diffs = [None]  # No difference for the first frame
     for i in range(1, len(frames)):
         diff = np.abs(frames[i] - frames[i - 1])
         diffs.append(diff)
     return diffs
-
-
-def frame_to_point_cloud(frame):
-    """Convert a grayscale frame into a point cloud of (x, y, intensity, gradient)"""
-    H, W = frame.shape
-    x_coords, y_coords = np.meshgrid(np.arange(W), np.arange(H))
-    x_norm = x_coords / (W - 1)
-    y_norm = y_coords / (H - 1)
-    intensity = frame  # already normalized [0,1]
-
-    gx = cv2.Sobel(frame, cv2.CV_32F, 1, 0, ksize=3)
-    gy = cv2.Sobel(frame, cv2.CV_32F, 0, 1, ksize=3)
-    grad_mag = np.sqrt(gx**2 + gy**2)
-    grad_mag /= grad_mag.max() + 1e-8  # Avoid divide by 0
-    pc = np.stack([x_norm.flatten(), y_norm.flatten(), intensity.flatten(), grad_mag.flatten()], axis=1)
-
-    return pc
 
 def frame_to_point_cloud(frame, diff=None):
     """Convert a frame (and optional temporal diff) to a 5D point cloud."""
@@ -76,8 +57,6 @@ def frame_to_point_cloud(frame, diff=None):
     ], axis=1)
 
     return pc
-
-
 
 def compute_sliced_wasserstein_distance(pc1, pc2, n_projections=50):
     d = pc1.shape[1]
@@ -107,7 +86,7 @@ def cluster_point_clouds(point_clouds, distance="euclidean", method="spectral", 
     elif distance == "wasserstein":
         n = len(point_clouds)
         D = np.zeros((n, n))
-        print("🔁 Computing Wasserstein distance matrix...")
+        print("Computing Wasserstein distance matrix...")
         for i in range(n):
             for j in range(i + 1, n):
                 d = compute_sliced_wasserstein_distance(point_clouds[i], point_clouds[j])
@@ -149,9 +128,6 @@ def show_clustered_images(frames, labels, n_clusters=3, samples_per_cluster=20, 
 
 
 def save_multi_view_3d_plot(point_clouds, labels=None, out_path="3d_clusters_views_paper.png"):
-    """
-    3D PCA plot visualization
-    """
     flattened = np.array([pc.flatten() for pc in point_clouds])
     reducer = PCA(n_components=3)
     embeddings = reducer.fit_transform(flattened)
@@ -177,7 +153,7 @@ def save_multi_view_3d_plot(point_clouds, labels=None, out_path="3d_clusters_vie
 
     plt.tight_layout(rect=[0, 0.08, 1, 0.93])
     plt.savefig(out_path, dpi=300, bbox_inches="tight", facecolor=fig.get_facecolor())
-    print(f"✅ Saved academic-style multi-view 3D PCA plot to: {out_path}")
+    print(f"Saved 3D PCA plot to: {out_path}")
 
 
 # ── Markov‑chain forecaster ───────────────────────────────────────────────────
@@ -224,9 +200,8 @@ if __name__ == "__main__":
     pred = np.argmax(mc.P[recent])
     conf = mc.P[recent][pred]
     print(f"Last stage {recent} -> Predicted stage {pred} with score {conf:.2f}")
-    
 
-    # title = f"{args.method.capitalize()}-{args.distance.capitalize()}"
-    # plot_cluster_assignments(labels, method=title)
-    # show_clustered_images(frames, labels, n_clusters=args.clusters, method=title)
-    # print(f"✅ {title} clustering complete.")
+    title = f"{args.method.capitalize()}-{args.distance.capitalize()}"
+    plot_cluster_assignments(labels, method=title)
+    show_clustered_images(frames, labels, n_clusters=args.clusters, method=title)
+    print(f"{title} clustering complete.")
