@@ -150,59 +150,42 @@ def show_clustered_images(frames, labels, n_clusters=3, samples_per_cluster=20, 
     plt.show()
 
 
-def visualize_frame_embeddings_3d_unlabeled(point_clouds):
+def save_multi_view_3d_plot(point_clouds, labels=None, out_path="3d_clusters_views_paper.png"):
+    """
+    Save a multi-view 3D PCA plot with clean, publication-ready aesthetics.
+    """
     flattened = np.array([pc.flatten() for pc in point_clouds])
     reducer = PCA(n_components=3)
     embeddings = reducer.fit_transform(flattened)
 
-    fig = plt.figure(figsize=(10, 7))
-    ax = fig.add_subplot(111, projection='3d')
+    view_angles = [(20, 45), (20, 135), (20, 225), (20, 315)]
+    fig = plt.figure(figsize=(14, 10))
+    fig.patch.set_facecolor('white')
 
-    ax.scatter(embeddings[:, 0], embeddings[:, 1], embeddings[:, 2], 
-               color='gray', s=60, alpha=0.6)
+    for i, (elev, azim) in enumerate(view_angles):
+        ax = fig.add_subplot(2, 2, i + 1, projection='3d')
+        scatter = ax.scatter(
+            embeddings[:, 0], embeddings[:, 1], embeddings[:, 2],
+            cmap='Set2', s=50, alpha=0.85,
+            edgecolor='black', linewidth=0.2
+        )
+        ax.view_init(elev=elev, azim=azim)
+        ax.set_title(f"View {i+1}", fontsize=10, pad=5)
+        ax.set_xlabel("PC1", fontsize=9, labelpad=6)
+        ax.set_ylabel("PC2", fontsize=9, labelpad=6)
+        ax.set_zlabel("PC3", fontsize=9, labelpad=6)
+        ax.tick_params(labelsize=8)
+        ax.grid(color='gray', linestyle='dotted', linewidth=0.4)
 
-    ax.set_title(f"3D Frame Embedding via PCA (Unlabeled)")
-    ax.set_xlabel("Component 1")
-    ax.set_ylabel("Component 2")
-    ax.set_zlabel("Component 3")
-
-    plt.tight_layout()
-    plt.show()
-
-def visualize_frame_embeddings_3d(point_clouds, labels=None):
-    """
-    Reduce high-dimensional point clouds to 3D and visualize with cluster labels.
-    """
-    print("🔍 Reducing dimensionality to 3D for visualization...")
-    flattened = np.array([pc.flatten() for pc in point_clouds])
-    
-    reducer = PCA(n_components=2)
-    embeddings = reducer.fit_transform(flattened)
-
-    fig = plt.figure(figsize=(10, 7))
-    ax = fig.add_subplot(111, projection='3d')
-
-    scatter = ax.scatter(
-        embeddings[:, 0], embeddings[:, 1], embeddings[:, 2],
-        c=labels, cmap='tab10', s=60, alpha=0.8
-    )
-
-    ax.set_title(f"3D Frame Clusters via PCA")
-    ax.set_xlabel("Component 1")
-    ax.set_ylabel("Component 2")
-    ax.set_zlabel("Component 3")
-
-    legend = ax.legend(*scatter.legend_elements(), title="Cluster")
-    ax.add_artist(legend)
-
-    plt.tight_layout()
-    plt.show()
+    plt.tight_layout(rect=[0, 0.08, 1, 0.93])
+    plt.savefig(out_path, dpi=300, bbox_inches="tight", facecolor=fig.get_facecolor())
+    print(f"✅ Saved academic-style multi-view 3D PCA plot to: {out_path}")
 
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Cluster video frames as point clouds using various methods.")
-    parser.add_argument('--folder', type=str, default="preprocessed_frames/denis_jump", help="Input frame folder.")
+    parser.add_argument('--folder', type=str, default="preprocessed_frames/0003", help="Input frame folder.")
     parser.add_argument('--clusters', type=int, default=3, help="Number of clusters.")
     parser.add_argument('--distance', type=str, choices=["euclidean", "wasserstein"], default="euclidean",
                         help="Distance metric to use.")
@@ -213,8 +196,9 @@ if __name__ == "__main__":
     frames = load_saved_frames(folder_path=args.folder)
     diffs = compute_frame_differences(frames)
     pcs = [frame_to_point_cloud(f, diff=d) for f, d in zip(frames, diffs)]
+    save_multi_view_3d_plot(pcs)
     labels = cluster_point_clouds(pcs, distance=args.distance, method=args.method, n_clusters=args.clusters)
-    visualize_frame_embeddings_3d(pcs, labels)
+    
     
 
     # title = f"{args.method.capitalize()}-{args.distance.capitalize()}"
